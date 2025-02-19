@@ -1,0 +1,36 @@
+#author puneetsd
+
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+strategy:
+  matrix:
+    Python312:
+      python.version: '3.12'
+
+steps:
+- task: UseNode@1
+  inputs:
+    version: '20.x'
+  displayName: 'Install Node.js'
+
+- script: |
+    sudo npm install -g aws-cdk
+    python -m pip install --upgrade pip
+    pip install -r requirements.txt
+    cdk synth
+  displayName: 'Install Required Dependencies'
+
+- task: AWSShellScript@1
+  inputs:
+    awsCredentials: 'aws-connection'
+    regionName: 'us-east-1'
+    scriptType: 'inline'
+    inlineScript: 'cdk deploy --ci --require-approval never'
+    disableAutoCwd: true
+    workingDirectory: '$(System.DefaultWorkingDirectory)'
+    failOnStandardError: false
+  displayName: 'Provision Resources in AWS'
