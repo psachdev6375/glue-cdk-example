@@ -7,7 +7,6 @@ from aws_cdk import (
     aws_iam as iam,
     aws_stepfunctions as sfn,
     aws_stepfunctions_tasks as sfn_tasks,
-    # aws_sqs as sqs,
 )
 from os import path
 from constructs import Construct
