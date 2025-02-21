@@ -150,3 +150,4 @@ The project defines the following AWS resources:
     - Purpose: Orchestrates the execution of the Glue job
 
 These resources are defined using AWS CDK in the `glue_cdk_example_stack.py` file.
+
