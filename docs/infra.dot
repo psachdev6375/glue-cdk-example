@@ -1,0 +1,21 @@
+digraph INFRA {
+  node [ color = "black", fillcolor = "#E6E6E6", height =1, style = "filled,bold,rounded", fontname = "Arial" ];
+  "GlueJobRole" [ label = "GlueJobRole
+(IAMRole)", shape =rectangle ];
+  "json-to-pq" [ label = "json-to-pq
+(GlueJob)", shape =rectangle, fillcolor = "#B7E0FF" ];
+  "StepFunctionRole" [ label = "StepFunctionRole
+(IAMRole)", shape =rectangle ];
+  "Run Glue ETL Job" [ label = "Run Glue ETL Job
+(StepFunctionTask)", shape =rectangle, fillcolor = "#B7E0FF" ];
+  "GlueETLStateMachine" [ label = "GlueETLStateMachine
+(StateMachine)", shape =rectangle, fillcolor = "#B7E0FF" ];
+  "GlueETLEventRule" [ label = "GlueETLEventRule
+(EventBridgeRule)", shape =rectangle, fillcolor = "#CCE0AC" ];
+  "json-to-pq" -> "GlueJobRole";
+  "Run Glue ETL Job" -> "json-to-pq";
+  "Run Glue ETL Job" -> "StepFunctionRole";
+  "GlueETLStateMachine" -> "Run Glue ETL Job";
+  "GlueETLStateMachine" -> "StepFunctionRole";
+  "GlueETLEventRule" -> "GlueETLStateMachine";
+}

@@ -7,6 +7,8 @@ from aws_cdk import (
     aws_iam as iam,
     aws_stepfunctions as sfn,
     aws_stepfunctions_tasks as sfn_tasks,
+    aws_events as events,
+    aws_events_targets as targets
 )
 from os import path
 from constructs import Construct
@@ -96,4 +98,14 @@ class GlueCdkExampleStack(Stack):
             role=step_function_role,
             timeout=Duration.hours(2)  # Adjust timeout as needed
         )
+        
+
+        #Create an EventBridge Rule to run the above Step Function every hour
+        rule = events.Rule(
+            self,
+            id=Constants.__EVENTBRIDGE_RULE_NAME__,
+            rule_name=Constants.__EVENTBRIDGE_RULE_NAME__+Aws.ACCOUNT_ID,
+            schedule=events.Schedule.rate(Duration.hours(1))
+        )
+        rule.add_target(targets.SfnStateMachine(self.state_machine))
         
