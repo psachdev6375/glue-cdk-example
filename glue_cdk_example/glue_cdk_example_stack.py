@@ -8,7 +8,8 @@ from aws_cdk import (
     aws_stepfunctions as sfn,
     aws_stepfunctions_tasks as sfn_tasks,
     aws_events as events,
-    aws_events_targets as targets
+    aws_events_targets as targets, 
+    aws_sns as sns
 )
 from os import path
 from constructs import Construct
@@ -71,6 +72,13 @@ class GlueCdkExampleStack(Stack):
                 resources=[self.glue_job.job_arn]
             )
         )
+        # Add permission to invoke SNS topic
+        step_function_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=["sns:Publish"],
+                resources=[Constants.__SNS_TOPIC__]
+            )
+        )
 
         # Create Step Function task to run Glue job
         run_glue_job = sfn_tasks.GlueStartJobRun(
@@ -85,20 +93,38 @@ class GlueCdkExampleStack(Stack):
             backoff_rate=1.0,
             max_attempts=3,
             interval=Duration.seconds(10))
-
-        # Create Step Function definition
-        definition = run_glue_job
         
+        fail_task = sfn.Fail(
+            self, "Fail", cause="Glue Job Failed", error="Something went wrong"
+        )
+
+        succeed_task = sfn.Succeed(self, "Succeeded", comment="Success!")
+
+        sns_task = sfn_tasks.SnsPublish(
+            self,
+            "Publish to SNS",
+            topic=sns.Topic.from_topic_arn(self, "SnsTopic", Constants.__SNS_TOPIC__),
+            message=sfn.TaskInput.from_json_path_at("$"),
+            subject="Glue Job Status",
+        )
+
+        #Chain Tasks 
+        chain = (
+            run_glue_job.next(succeed_task)
+        )
+        run_glue_job.add_catch(sns_task)
+        sns_task.next(fail_task)
+
         # Create Step Function state machine
         self.state_machine = sfn.StateMachine(
             self,
             id=Constants.__STATE_MACHINE_NAME__,
             state_machine_name=Constants.__STATE_MACHINE_NAME__+Aws.ACCOUNT_ID,
-            definition=definition,
+            definition_body=sfn.DefinitionBody.from_chainable(chain),
             role=step_function_role,
+            state_machine_type=sfn.StateMachineType.STANDARD,
             timeout=Duration.hours(2)  # Adjust timeout as needed
         )
-        
 
         #Create an EventBridge Rule to run the above Step Function every hour
         rule = events.Rule(
