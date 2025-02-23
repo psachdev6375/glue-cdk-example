@@ -115,7 +115,7 @@ class GlueCdkExampleStack(Stack):
         run_glue_job.add_catch(sns_task)
         sns_task.next(fail_task)
 
-        # Create Step Function state machine
+        # Create Step Function state machine. Do not run
         self.state_machine = sfn.StateMachine(
             self,
             id=Constants.__STATE_MACHINE_NAME__,
