@@ -6,28 +6,14 @@ digraph INFRA {
 (GlueJob)", shape =rectangle, fillcolor = "#B7E0FF" ];
   "StepFunctionRole" [ label = "StepFunctionRole
 (IAMRole)", shape =rectangle ];
-  "Run Glue ETL Job" [ label = "Run Glue ETL Job
-(GlueStartJobRun)", shape =rectangle, fillcolor = "#B7E0FF" ];
-  "Publish to SNS" [ label = "Publish to SNS
-(SNSPublish)", shape =rectangle, fillcolor = "#CCE0AC" ];
-  "Fail" [ label = "Fail
-(StepFunctionFail)", shape =parallelogram, fillcolor = "#CCE0AC" ];
-  "Succeeded" [ label = "Succeeded
-(StepFunctionSucceed)", shape =parallelogram, fillcolor = "#CCE0AC" ];
   "GlueETLStateMachine" [ label = "GlueETLStateMachine
-(StateMachine)", shape =rectangle, fillcolor = "#B7E0FF" ];
-  "GlueETLEventRule" [ label = "GlueETLEventRule
+(StepFunction)" ];
+  "ScheduledGlueJobRule" [ label = "ScheduledGlueJobRule
 (EventBridgeRule)", shape =rectangle, fillcolor = "#CCE0AC" ];
+  "SnsTopic" [ label = "SnsTopic
+(SNSTopic)", shape =rectangle, fillcolor = "#CCE0AC" ];
   "json-to-pq" -> "GlueJobRole";
-  "Run Glue ETL Job" -> "json-to-pq";
-  "Run Glue ETL Job" -> "StepFunctionRole";
-  "Publish to SNS" -> "Run Glue ETL Job";
-  "Fail" -> "Publish to SNS";
-  "Succeeded" -> "Run Glue ETL Job";
-  "GlueETLStateMachine" -> "Run Glue ETL Job";
+  "GlueETLStateMachine" -> "json-to-pq";
   "GlueETLStateMachine" -> "StepFunctionRole";
-  "GlueETLStateMachine" -> "Publish to SNS";
-  "GlueETLStateMachine" -> "Fail";
-  "GlueETLStateMachine" -> "Succeeded";
-  "GlueETLEventRule" -> "GlueETLStateMachine";
+  "ScheduledGlueJobRule" -> "GlueETLStateMachine";
 }
