@@ -13,18 +13,19 @@ from aws_cdk import (
 )
 from os import path
 from constructs import Construct
-import glue_cdk_example.constants as Constants
+from glue_cdk_example.constants import Constants
+# import glue_cdk_example.constants as Constants
 
 class GlueCdkExampleStack(Stack):
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
-
+        
         #Create a role for Glue Job
         glue_job_role = iam.Role(
             self,
             id="GlueJobRole",
-            role_name="GlueJobRole"+Aws.ACCOUNT_ID,
+            role_name="GlueJobRole-"+Aws.ACCOUNT_ID+"-"+Aws.REGION,
             assumed_by=iam.ServicePrincipal("glue.amazonaws.com"),
             description="Glue Job Role",
         )
@@ -34,7 +35,7 @@ class GlueCdkExampleStack(Stack):
 
         #Create Glue Job
         self.glue_job = glue.PySparkEtlJob(self, Constants.__GLUE_JOB_NAME__,
-            job_name=Constants.__GLUE_JOB_NAME__+Aws.ACCOUNT_ID,
+            job_name=Constants.__GLUE_JOB_NAME__+Aws.ACCOUNT_ID+"-"+Aws.REGION,
             role=glue_job_role,
             glue_version=glue.GlueVersion.V5_0,
             max_concurrent_runs=1,
@@ -99,7 +100,7 @@ class GlueCdkExampleStack(Stack):
         )
 
         succeed_task = sfn.Succeed(self, "Succeeded", comment="Success!")
-
+        print(Constants.__SNS_TOPIC__)
         sns_task = sfn_tasks.SnsPublish(
             self,
             "Publish to SNS",
@@ -119,7 +120,7 @@ class GlueCdkExampleStack(Stack):
         self.state_machine = sfn.StateMachine(
             self,
             id=Constants.__STATE_MACHINE_NAME__,
-            state_machine_name=Constants.__STATE_MACHINE_NAME__+Aws.ACCOUNT_ID,
+            state_machine_name=Constants.__STATE_MACHINE_NAME__+Aws.ACCOUNT_ID+"-"+Aws.REGION,
             definition_body=sfn.DefinitionBody.from_chainable(chain),
             role=step_function_role,
             state_machine_type=sfn.StateMachineType.STANDARD,
@@ -131,7 +132,7 @@ class GlueCdkExampleStack(Stack):
         rule = events.Rule(
             self,
             id=Constants.__EVENTBRIDGE_RULE_NAME__,
-            rule_name=Constants.__EVENTBRIDGE_RULE_NAME__+Aws.ACCOUNT_ID,
+            rule_name=Constants.__EVENTBRIDGE_RULE_NAME__+Aws.ACCOUNT_ID+"-"+Aws.REGION,
             schedule=events.Schedule.expression("cron(20 * * * ? *)")
         )
         rule.add_target(targets.SfnStateMachine(self.state_machine))

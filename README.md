@@ -1,60 +1,56 @@
-# AWS Glue ETL Pipeline with CDK Infrastructure
+# AWS Glue ETL Pipeline with Step Functions and EventBridge Integration
 
-A serverless ETL pipeline that automatically converts JSON data to Parquet format using AWS Glue, orchestrated by Step Functions and deployed with AWS CDK. The pipeline runs hourly and includes data quality checks with automated notifications.
+This project implements an automated ETL pipeline using AWS Glue, Step Functions, and EventBridge to transform JSON data into Parquet format with data quality validation. The infrastructure is defined using AWS CDK, enabling infrastructure as code deployment across multiple environments.
 
-This project provides an infrastructure-as-code solution for building and deploying a production-ready ETL pipeline. It combines AWS Glue's powerful data processing capabilities with Step Functions' orchestration features to create a reliable, scalable data transformation workflow. The pipeline includes built-in data quality validation, error handling, and monitoring through SNS notifications.
-
-The solution uses AWS CDK to define all infrastructure components, enabling consistent deployments across multiple environments through Azure Pipelines. The ETL process focuses on transforming JSON data into the more efficient Parquet format while maintaining data quality standards through automated checks.
+The solution provides a serverless, scalable data processing pipeline that automatically executes on a scheduled basis. It includes comprehensive error handling, monitoring via SNS notifications, and data quality checks during the transformation process. The pipeline is designed to handle large-scale data processing tasks while maintaining data quality and operational reliability through automated retries and failure notifications.
 
 ## Repository Structure
 ```
 .
-├── app.py                              # CDK app entry point defining stack configuration
+├── app.py                              # CDK app entry point
 ├── glue_cdk_example/                   # Main application code
-│   ├── constants.py                    # Configuration constants for AWS resources
-│   ├── glue_cdk_example_stack.py      # CDK stack definition with infrastructure components
+│   ├── constants.py                    # Configuration constants
+│   ├── glue_cdk_example_stack.py      # Core infrastructure stack definition
 │   └── gluescripts/
-│       └── json-to-pq.py              # Glue ETL script for JSON to Parquet conversion
-├── tests/                              # Test directory
-│   └── unit/                          # Unit tests for CDK stack
-├── azure-pipelines.yml                 # Main deployment pipeline for us-east-1
-├── azure-pipelines-prod.yml            # Production deployment pipeline for us-east-2
-├── azure-pipelines-test.yml            # Test deployment pipeline for us-west-2
-└── requirements.txt                    # Python dependencies
+│       └── json-to-pq.py              # Glue ETL transformation script
+├── tests/                             # Test directory
+│   └── unit/                          # Unit tests for infrastructure
+├── azure-pipelines*.yml               # CI/CD pipeline definitions
+├── cdk.json                           # CDK configuration
+└── requirements.txt                   # Python dependencies
 ```
 
 ## Usage Instructions
-
 ### Prerequisites
 - Python 3.12
 - Node.js 20.x
-- AWS CLI configured with appropriate credentials
-- AWS CDK CLI (`npm install -g aws-cdk`)
+- AWS CDK CLI
+- AWS account credentials configured
+- Azure DevOps (for CI/CD pipeline)
 
 ### Installation
-
-1. Clone the repository and navigate to the project directory:
 ```bash
-git clone <repository-url>
-cd <repository-name>
-```
-
-2. Create and activate a virtual environment:
-```bash
+# Create and activate virtual environment
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate.bat
-```
 
-3. Install dependencies:
-```bash
+# Install dependencies
 pip install -r requirements.txt
+npm install -g aws-cdk
+
+# Bootstrap CDK (first-time only)
+cdk bootstrap
 ```
 
 ### Quick Start
-
-1. Configure your AWS credentials:
+1. Configure environment variables:
 ```bash
-aws configure
+# Create environment.conf file with the following content:
+[DEV]
+glue_db=your_database_name
+table_name=your_table_name
+destination_s3_location=s3://your-bucket/output/
+topic_arn=arn:aws:sns:region:account:topic-name
 ```
 
 2. Deploy the stack:
@@ -63,126 +59,94 @@ cdk deploy
 ```
 
 ### More Detailed Examples
-
-1. Running the ETL job manually:
+1. Running the Glue job manually:
 ```python
+# Using AWS SDK
 import boto3
 
-client = boto3.client('stepfunctions')
-client.start_execution(
-    stateMachineArn='<state-machine-arn>',
-    name='manual-execution'
+glue = boto3.client('glue')
+response = glue.start_job_run(
+    JobName='json-to-pq-{account}-{region}',
+    Arguments={
+        '--dbname': 'your_database',
+        '--table': 'your_table',
+        '--outputpath': 's3://your-bucket/output/'
+    }
 )
 ```
 
 2. Monitoring job execution:
 ```python
-import boto3
-
-client = boto3.client('glue')
-response = client.get_job_run(
-    JobName='<job-name>',
-    RunId='<run-id>'
+response = glue.get_job_run(
+    JobName='json-to-pq-{account}-{region}',
+    RunId=response['JobRunId']
 )
 ```
 
 ### Troubleshooting
-
-#### Common Issues
-
-1. CDK Deployment Failures
-- Problem: "Resource already exists" error
+1. Glue Job Failures
+- Problem: Job fails with "Resource not found"
 - Solution: 
-```bash
-cdk destroy
-cdk deploy
-```
+  ```bash
+  # Verify IAM role permissions
+  aws iam get-role --role-name GlueJobRole-{account}-{region}
+  # Check Glue database exists
+  aws glue get-database --name your_database_name
+  ```
 
-2. Glue Job Failures
-- Problem: Job execution timeout
-- Solution: Check CloudWatch logs at `/aws-glue/jobs/<job-name>`
-- Adjust timeout in CDK stack:
-```python
-glue_job = glue.Job(
-    timeout=Duration.minutes(30)
-)
-```
-
-#### Debugging
-- Enable Glue job debugging:
-```python
-glue_job = glue.Job(
-    default_arguments={
-        '--enable-continuous-cloudwatch-log': 'true',
-        '--enable-metrics': 'true'
-    }
-)
-```
-
-- View CloudWatch logs:
-```bash
-aws logs get-log-events --log-group-name /aws-glue/jobs/<job-name>
-```
+2. Step Functions Execution Issues
+- Problem: State machine fails to start Glue job
+- Debug steps:
+  ```bash
+  # Enable logging
+  aws stepfunctions update-state-machine \
+    --state-machine-arn <state-machine-arn> \
+    --logging-configuration level=ALL
+  ```
 
 ## Data Flow
-
-The pipeline processes JSON data through a series of transformations, applying data quality checks before converting to Parquet format. The process is orchestrated by Step Functions with error handling and notification capabilities.
+The pipeline processes JSON data through a series of transformations to produce quality-validated Parquet files. The process is triggered hourly through EventBridge and orchestrated by Step Functions.
 
 ```ascii
-JSON Source    Step Functions     Glue ETL Job     Data Quality     Parquet Output
-    [S3] -----> [Orchestrator] --> [Transform] --> [Validation] --> [S3]
-                      |                |                |
-                      |                |                |
-                      +----------------+----------------+
-                               |
-                           [SNS Topic]
-                        (Status Notifications)
+EventBridge Rule
+      ↓
+Step Functions
+      ↓
+Glue ETL Job → [JSON Input] → Data Quality Check → [Parquet Output]
+      ↓
+SNS Notification (on failure)
 ```
 
-Component Interactions:
-1. Step Functions triggers the Glue job on an hourly schedule
-2. Glue job reads JSON data from the configured source
-3. Data undergoes schema transformation and validation
-4. Quality checks ensure data integrity (column count > 0)
-5. Successfully processed data is written as Parquet
-6. Job status notifications are sent via SNS
-7. Error handling automatically retries failed jobs up to 3 times
+Component interactions:
+1. EventBridge triggers the Step Function state machine every hour at 20 minutes past
+2. Step Functions initiates the Glue ETL job with configured parameters
+3. Glue job reads JSON data from the configured database table
+4. Data quality rules are applied during transformation
+5. Transformed data is written as Parquet files to the specified S3 location
+6. Job status is monitored by Step Functions
+7. Failures trigger SNS notifications for operational visibility
 
 ## Infrastructure
 
 ![Infrastructure diagram](./docs/infra.svg)
-
 ### Lambda Functions
-- None defined in current infrastructure
-
-### IAM Roles
-- GlueJobRole: Executes Glue ETL jobs with S3 access
-- StepFunctionRole: Manages Step Function execution with Glue and SNS permissions
+- Glue ETL Job
+  - Type: `glue.PySparkEtlJob`
+  - Workers: 2 G.1X
+  - Glue Version: 5.0
+  - Max Concurrent Runs: 1
 
 ### State Machines
-- ETL Orchestrator: Manages Glue job execution with retry logic and error handling
+- ETL Orchestration State Machine
+  - Type: Standard
+  - Timeout: 2 hours
+  - Retry Configuration: 3 attempts with 10-second intervals
 
 ### Event Rules
-- Hourly trigger for Step Function execution
+- Hourly Trigger
+  - Schedule: `cron(20 * * * ? *)`
+  - Target: ETL State Machine
 
-### Glue Resources
-- ETL Job: Converts JSON to Parquet with data quality validation
-- Job Configuration:
-  - Worker Type: G.1X
-  - Number of Workers: 2
-  - Glue Version: 5.0
-
-## Deployment
-
-### Prerequisites
-- Azure DevOps account
-- AWS credentials configured in Azure Pipelines
-- Appropriate IAM roles and permissions
-
-### Deployment Steps
-1. Configure AWS credentials in Azure Pipelines
-2. Select appropriate pipeline based on environment:
-   - azure-pipelines.yml for us-east-1
-   - azure-pipelines-prod.yml for us-east-2
-   - azure-pipelines-test.yml for us-west-2
-3. Run pipeline to deploy infrastructure
+### IAM Roles
+- Glue Job Role: Full S3 access and Glue service role
+- Step Functions Role: Permissions for Glue job execution and SNS publishing

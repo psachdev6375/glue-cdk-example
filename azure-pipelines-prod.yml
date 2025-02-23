@@ -21,6 +21,7 @@ steps:
     sudo npm install -g aws-cdk
     python -m pip install --upgrade pip
     pip install -r requirements.txt
+    export TARGET_ENVIRONMENT=PROD
     cdk synth
   displayName: 'Install Required Dependencies'
 
