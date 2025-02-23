@@ -15,5 +15,5 @@ class Constants:
     __OUTPUT_S3_LOCATION__ = config[environment]['destination_s3_location']
     __STATE_MACHINE_NAME__ = "STF-Glue-json-to-pq-"
     __EVENTBRIDGE_RULE_NAME__ = "STF-Hourly-Rule-"
-    __SNS_TOPIC__ = config['DEV']['topic_arn']
+    __SNS_TOPIC__ = config[environment]['topic_arn']
     __ENVIRONMENT__ = environment
