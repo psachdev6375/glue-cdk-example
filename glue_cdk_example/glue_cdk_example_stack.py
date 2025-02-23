@@ -126,12 +126,13 @@ class GlueCdkExampleStack(Stack):
             timeout=Duration.hours(2)  # Adjust timeout as needed
         )
 
-        #Create an EventBridge Rule to run the above Step Function every hour
+        #Create an EventBridge Rule to run the above Step Function every hour at 20 minutes
+        #Create a role for EventBridge Rule
         rule = events.Rule(
             self,
             id=Constants.__EVENTBRIDGE_RULE_NAME__,
             rule_name=Constants.__EVENTBRIDGE_RULE_NAME__+Aws.ACCOUNT_ID,
-            schedule=events.Schedule.rate(Duration.hours(1))
+            schedule=events.Schedule.expression("cron(20 * * * ? *)")
         )
         rule.add_target(targets.SfnStateMachine(self.state_machine))
         
