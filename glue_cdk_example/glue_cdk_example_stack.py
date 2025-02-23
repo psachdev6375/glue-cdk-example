@@ -25,7 +25,7 @@ class GlueCdkExampleStack(Stack):
         glue_job_role = iam.Role(
             self,
             id="GlueJobRole",
-            role_name="GlueJobRole-"+Aws.ACCOUNT_ID+"-"+Aws.REGION,
+            role_name="GlueJobRole-"+Aws.ACCOUNT_ID+"-"+Aws.REGION+"-"+Constants.__ENVIRONMENT__,
             assumed_by=iam.ServicePrincipal("glue.amazonaws.com"),
             description="Glue Job Role",
         )
@@ -35,7 +35,7 @@ class GlueCdkExampleStack(Stack):
 
         #Create Glue Job
         self.glue_job = glue.PySparkEtlJob(self, Constants.__GLUE_JOB_NAME__,
-            job_name=Constants.__GLUE_JOB_NAME__+Aws.ACCOUNT_ID+"-"+Aws.REGION,
+            job_name=Constants.__GLUE_JOB_NAME__+Aws.ACCOUNT_ID+"-"+Aws.REGION+"-"+Constants.__ENVIRONMENT__,
             role=glue_job_role,
             glue_version=glue.GlueVersion.V5_0,
             max_concurrent_runs=1,
@@ -120,7 +120,7 @@ class GlueCdkExampleStack(Stack):
         self.state_machine = sfn.StateMachine(
             self,
             id=Constants.__STATE_MACHINE_NAME__,
-            state_machine_name=Constants.__STATE_MACHINE_NAME__+Aws.ACCOUNT_ID+"-"+Aws.REGION,
+            state_machine_name=Constants.__STATE_MACHINE_NAME__+Aws.ACCOUNT_ID+"-"+Aws.REGION+"-"+Constants.__ENVIRONMENT__,
             definition_body=sfn.DefinitionBody.from_chainable(chain),
             role=step_function_role,
             state_machine_type=sfn.StateMachineType.STANDARD,
@@ -132,7 +132,7 @@ class GlueCdkExampleStack(Stack):
         rule = events.Rule(
             self,
             id=Constants.__EVENTBRIDGE_RULE_NAME__,
-            rule_name=Constants.__EVENTBRIDGE_RULE_NAME__+Aws.ACCOUNT_ID+"-"+Aws.REGION,
+            rule_name=Constants.__EVENTBRIDGE_RULE_NAME__+Aws.ACCOUNT_ID+"-"+Aws.REGION+"-"+Constants.__ENVIRONMENT__,
             schedule=events.Schedule.expression("cron(20 * * * ? *)")
         )
         rule.add_target(targets.SfnStateMachine(self.state_machine))

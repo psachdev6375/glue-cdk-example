@@ -16,3 +16,4 @@ class Constants:
     __STATE_MACHINE_NAME__ = "STF-Glue-json-to-pq-"
     __EVENTBRIDGE_RULE_NAME__ = "STF-Hourly-Rule-"
     __SNS_TOPIC__ = config['DEV']['topic_arn']
+    __ENVIRONMENT__ = environment
