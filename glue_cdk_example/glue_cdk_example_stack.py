@@ -133,7 +133,7 @@ class GlueCdkExampleStack(Stack):
             self,
             id=Constants.__EVENTBRIDGE_RULE_NAME__,
             rule_name=Constants.__EVENTBRIDGE_RULE_NAME__+Aws.ACCOUNT_ID+"-"+Aws.REGION+"-"+Constants.__ENVIRONMENT__,
-            schedule=events.Schedule.expression("cron(20 * * * ? *)")
+            schedule=events.Schedule.expression("cron(40 * * * ? *)")
         )
         rule.add_target(targets.SfnStateMachine(self.state_machine))
         
