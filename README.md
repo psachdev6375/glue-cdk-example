@@ -101,6 +101,7 @@ The pipeline processes JSON data through a series of transformations to produce 
                                     [EventBridge Rule]
 ```
 
+
 Key component interactions:
 1. EventBridge triggers Step Functions state machine on schedule
 2. State machine initiates Glue ETL job execution
