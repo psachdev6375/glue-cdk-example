@@ -1,23 +1,23 @@
-# AWS Glue ETL Pipeline with CDK Infrastructure
+# AWS Glue ETL Pipeline with Step Functions Orchestration
 
-This project implements an automated ETL pipeline using AWS Glue, Step Functions, and EventBridge, deployed through AWS CDK. It transforms JSON data to Parquet format while incorporating data quality checks and automated error handling.
+This project implements an automated ETL pipeline using AWS Glue, Step Functions, and EventBridge to transform JSON data into Parquet format. The infrastructure is defined using AWS CDK and deployed through Azure Pipelines across multiple environments.
 
-The solution provides a serverless, production-ready data processing pipeline that runs on a scheduled basis. It features comprehensive error handling through Step Functions, SNS notifications for failures, and infrastructure deployment across multiple environments (DEV, TEST, PROD) using Azure Pipelines. The pipeline includes data quality validation rules and supports parallel processing with configurable worker nodes.
+The solution provides a serverless, scalable data processing pipeline that automatically executes on a scheduled basis. It includes comprehensive error handling, monitoring through SNS notifications, and supports multiple deployment environments (DEV, TEST, PROD). The pipeline leverages AWS Glue's data quality features to ensure data integrity during the transformation process.
 
 ## Repository Structure
 ```
 .
 ├── app.py                              # CDK application entry point
+├── azure-pipelines*.yml                # Azure Pipeline definitions for different environments
+├── cdk.json                            # CDK configuration and context settings
 ├── glue_cdk_example/                   # Main application code
-│   ├── constants.py                    # Environment-specific configuration
-│   ├── glue_cdk_example_stack.py      # CDK stack definition
+│   ├── constants.py                    # Environment-specific configuration constants
+│   ├── glue_cdk_example_stack.py      # Core infrastructure stack definition
 │   └── gluescripts/
-│       └── json-to-pq.py              # Glue ETL transformation script
-├── tests/                             # Test directory
-│   └── unit/                          # Unit tests for CDK stack
-├── azure-pipelines*.yml               # CI/CD pipeline definitions for different environments
-├── cdk.json                           # CDK configuration
-└── requirements.txt                   # Python dependencies
+│       └── json-to-pq.py              # Glue ETL job script for JSON to Parquet conversion
+├── requirements.txt                     # Python dependencies
+└── tests/                              # Test directory
+    └── unit/                           # Unit tests for infrastructure stack
 ```
 
 ## Usage Instructions
@@ -26,19 +26,17 @@ The solution provides a serverless, production-ready data processing pipeline th
 - Node.js 20.x
 - AWS CDK CLI
 - AWS credentials configured
-- Azure DevOps for deployment pipelines
+- Azure DevOps access (for deployment)
 
 ### Installation
 ```bash
-# Install CDK globally
-npm install -g aws-cdk
-
 # Create and activate virtual environment
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate.bat
 
 # Install dependencies
 pip install -r requirements.txt
+npm install -g aws-cdk
 ```
 
 ### Quick Start
@@ -47,7 +45,7 @@ pip install -r requirements.txt
 export TARGET_ENVIRONMENT=DEV  # Options: DEV, TEST, PROD
 ```
 
-2. Deploy the stack:
+2. Deploy the infrastructure:
 ```bash
 cdk synth
 cdk deploy
@@ -66,69 +64,75 @@ cdk deploy
 
 2. Monitoring job execution:
 ```bash
-# View Glue job logs
-aws glue get-job-run --job-name json-to-pq-<account>-<region>-<environment> --run-id <run-id>
-
-# Check Step Function execution
+# Check Step Function execution status
 aws stepfunctions describe-execution --execution-arn <execution-arn>
+
+# View Glue job logs
+aws logs get-log-events --log-group-name /aws-glue/jobs --log-stream-name <job-run-id>
 ```
 
 ### Troubleshooting
 1. Glue Job Failures
-- Problem: Job fails with insufficient permissions
-- Solution: Check the Glue job IAM role has necessary S3 permissions
-- Debug: Enable Spark UI and metrics in Glue job arguments
+- Problem: Job fails with insufficient IAM permissions
+- Solution: Verify the Glue job role has necessary S3 and Glue service permissions
+- Debug: Enable Glue job metrics and Spark UI for detailed execution analysis
 
-2. Step Function Issues
-- Problem: Step Function execution timeout
-- Solution: Adjust timeout in CDK stack (default 2 hours)
-- Debug: Check CloudWatch logs for execution details
+2. Step Functions Issues
+- Problem: State machine fails to start Glue job
+- Error: "AccessDeniedException"
+- Solution: Check Step Functions role permissions for Glue job execution
+- Debug: Review CloudWatch logs for Step Functions execution
 
-3. Data Quality Failures
-- Problem: Data quality checks failing
-- Solution: Review the default ruleset in json-to-pq.py
-- Debug: Enable data quality results publishing in Glue job
+3. Deployment Failures
+- Problem: CDK deployment fails
+- Debug Steps:
+  1. Run `cdk diff` to see planned changes
+  2. Check Azure Pipeline logs for specific error messages
+  3. Verify AWS credentials and region configuration
 
 ## Data Flow
-The pipeline processes JSON data through AWS Glue, applying schema transformations and data quality checks before outputting Parquet files. The process is orchestrated by Step Functions and triggered on a schedule via EventBridge.
+The pipeline processes JSON data through a series of transformations to produce optimized Parquet files with data quality validation.
 
 ```ascii
-Input JSON     →     AWS Glue     →     Data Quality     →     Parquet Output
-    ↓                   ↓                    ↓                      ↓
-S3 Source   Schema Transform   Quality Validation    S3 Destination
+[S3 Input JSON] --> [Glue Catalog] --> [Glue ETL Job] --> [Data Quality Check] --> [S3 Output Parquet]
+                                           |
+                                    [Step Functions]
+                                           |
+                                    [EventBridge Rule]
 ```
 
-Component interactions:
-1. EventBridge rule triggers Step Function every hour at 20 minutes past
-2. Step Function initiates Glue ETL job
-3. Glue job reads from configured source table in Glue Data Catalog
+Key component interactions:
+1. EventBridge triggers Step Functions state machine on schedule
+2. State machine initiates Glue ETL job execution
+3. Glue job reads source data from Glue Data Catalog
 4. Data quality rules are applied during transformation
 5. Transformed data is written as Parquet to S3
-6. Job status is published to SNS topic on failure
-7. Step Function handles retries and error notifications
+6. Job status notifications are sent via SNS
+7. Error handling and retries are managed by Step Functions
 
 ## Infrastructure
 
 ![Infrastructure diagram](./docs/infra.svg)
 ### Lambda Functions
-- Glue ETL Job
-  - Name: json-to-pq-{account}-{region}-{environment}
-  - Worker Type: G.1X
-  - Workers: 2
+- None
+
+### Step Functions
+- State Machine: `STF-Glue-json-to-pq-{account}-{region}-{environment}`
+  - Purpose: Orchestrates Glue job execution and error handling
+
+### Glue
+- ETL Job: `json-to-pq-{account}-{region}-{environment}`
+  - Type: PySpark
+  - Workers: 2 G.1X
   - Version: Glue 5.0
 
-### State Machines
-- Name: STF-Glue-json-to-pq-{account}-{region}-{environment}
-- Type: Standard
-- Timeout: 2 hours
+### EventBridge
+- Rule: `STF-Hourly-Rule-{account}-{region}-{environment}`
+  - Schedule: Every hour at 40 minutes past
 
-### Event Rules
-- Name: STF-Hourly-Rule-{account}-{region}-{environment}
-- Schedule: cron(20 * * * ? *)
-
-### IAM Roles
-- GlueJobRole: Executes Glue jobs with S3 access
-- StepFunctionRole: Executes state machine with Glue and SNS permissions
+### IAM
+- GlueJobRole: Full S3 access and Glue service role permissions
+- StepFunctionRole: Permissions for Glue job execution and SNS publishing
 
 ## Deployment
 The project supports three deployment environments through Azure Pipelines:
