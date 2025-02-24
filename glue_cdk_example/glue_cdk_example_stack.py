@@ -21,6 +21,13 @@ class GlueCdkExampleStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
         
+        print("-----Parameters-------")
+        print(Constants.__SNS_TOPIC__)
+        print(Constants.__GLUE_DB_NAME__)
+        print(Constants.__GLUE_TABLE_NAME__)
+        print(Constants.__OUTPUT_S3_LOCATION__)
+        print("-----Parameters-------")
+        
         #Create a role for Glue Job
         glue_job_role = iam.Role(
             self,
@@ -100,7 +107,7 @@ class GlueCdkExampleStack(Stack):
         )
 
         succeed_task = sfn.Succeed(self, "Succeeded", comment="Success!")
-        print(Constants.__SNS_TOPIC__)
+        
         sns_task = sfn_tasks.SnsPublish(
             self,
             "Publish to SNS",
