@@ -4,10 +4,10 @@ import os
 import aws_cdk as cdk
 
 from glue_cdk_example.glue_cdk_example_stack import GlueCdkExampleStack
-
+from glue_cdk_example.constants import Constants
 
 app = cdk.App()
-GlueCdkExampleStack(app, "GlueCdkExampleStack",
+GlueCdkExampleStack(app, "GlueCdkExampleStack-"+Constants.__NAME_SUFFIX__,
     # If you don't specify 'env', this stack will be environment-agnostic.
     # Account/Region-dependent features and context lookups will not work,
     # but a single synthesized template can be deployed anywhere.
