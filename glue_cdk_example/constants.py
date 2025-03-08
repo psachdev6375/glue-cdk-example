@@ -17,3 +17,4 @@ class Constants:
     __EVENTBRIDGE_RULE_NAME__ = "STF-Hourly-Rule-"
     __SNS_TOPIC__ = config[environment]['topic_arn']
     __ENVIRONMENT__ = environment
+    __NAME_SUFFIX__ = "1"
